@@ -85,7 +85,7 @@ class SettingsManager {
                         <div class="toggle-switch ${this.tracker.isDarkMode ? 'active' : ''}" id="dark-mode-toggle"></div>
                     </div>
                     <div class="setting-item">
-                        <label for="glassmorphism">Glassmorphism Effects</label>
+                        <label for="glassmorphism">Glassmorphism Effects (high end device recommended)</label>
                         <div class="toggle-switch active" id="glassmorphism-toggle"></div>
                     </div>
                     <div class="setting-item">
