@@ -787,6 +787,85 @@ class SettingsManager {
         });
     }
 
+    async connectToCanvas(canvasUrl, canvasToken) {
+        try {
+            // Validate URL format
+            if (!canvasUrl || !canvasUrl.startsWith('http')) {
+                throw new Error('Please enter a valid Canvas URL (e.g., https://yourschool.instructure.com)');
+            }
+
+            // Remove trailing slash if present
+            canvasUrl = canvasUrl.replace(/\/$/, '');
+            
+            // Test the connection by fetching user data
+            const response = await fetch(`${canvasUrl}/api/v1/users/self`, {
+                headers: {
+                    'Authorization': `Bearer ${canvasToken || ''}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Invalid API token. Please check your token and try again.');
+                } else if (response.status === 404) {
+                    throw new Error('Invalid Canvas URL. Please check the URL and try again.');
+                } else {
+                    throw new Error(`Canvas API error: ${response.status} ${response.statusText}`);
+                }
+            }
+
+            const userData = await response.json();
+            
+            // Store the actual user data
+            localStorage.setItem('canvas-user-name', userData.name || 'Canvas User');
+            localStorage.setItem('canvas-user-email', userData.login_id || userData.email || '');
+            localStorage.setItem('canvas-user-id', userData.id);
+            
+            // Store the connection details
+            localStorage.setItem('canvasURL', canvasUrl);
+            if (canvasToken) {
+                localStorage.setItem('canvasToken', canvasToken);
+            }
+            
+            // Update the UI
+            document.getElementById('canvas-status').textContent = 'Connected';
+            document.getElementById('canvas-status').className = 'status connected';
+            
+            // Update account info display
+            const accountName = document.getElementById('canvas-account-name');
+            const accountEmail = document.getElementById('canvas-account-email');
+            if (accountName) accountName.textContent = userData.name || 'Canvas User';
+            if (accountEmail) accountEmail.textContent = userData.login_id || userData.email || '';
+            
+            // Enable sync button if available
+            const syncButton = document.getElementById('sync-now-btn');
+            if (syncButton) {
+                syncButton.disabled = false;
+            }
+            
+            return userData;
+            
+        } catch (error) {
+            console.error('Canvas connection error:', error);
+            
+            // Clear any stored credentials on error
+            localStorage.removeItem('canvasToken');
+            localStorage.removeItem('canvas-user-name');
+            localStorage.removeItem('canvas-user-email');
+            localStorage.removeItem('canvas-user-id');
+            
+            // Update UI to show error state
+            const statusElement = document.getElementById('canvas-status');
+            if (statusElement) {
+                statusElement.textContent = 'Connection failed';
+                statusElement.className = 'status error';
+            }
+            
+            throw error; // Re-throw to be caught by the caller
+        }
+    }
+
     handleBackgroundTypeChange(type) {
         const patternOptions = document.getElementById('pattern-options');
         const imageUploadSection = document.getElementById('image-upload-section');
@@ -875,31 +954,12 @@ class SettingsManager {
         this.renderSettingsPage();
     }
 
-    async connectToCanvas(canvasUrl, canvasToken) {
-        // Simulate Canvas API connection with better validation
+    async connectToGoogle() {
+        // Simulate Google Classroom API connection
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                try {
-                    // Validate URL format
-                    new URL(canvasUrl);
-                    
-                    // Simulate API connection
-                    if (canvasToken) {
-                        // Enhanced sync with API token
-                        localStorage.setItem('canvas-user-name', 'John Doe');
-                        localStorage.setItem('canvas-user-email', 'john.doe@school.edu');
-                        localStorage.setItem('canvas-sync-type', 'enhanced');
-                    } else {
-                        // Basic sync without API token
-                        localStorage.setItem('canvas-user-name', 'Basic User');
-                        localStorage.setItem('canvas-user-email', 'user@school.edu');
-                        localStorage.setItem('canvas-sync-type', 'basic');
-                    }
-                    
-                    resolve();
-                } catch (error) {
-                    reject(new Error('Invalid Canvas URL format'));
-                }
+                // In a real implementation, this would handle Google OAuth
+                resolve();
             }, 1000);
         });
     }
@@ -957,16 +1017,6 @@ class SettingsManager {
                 }
             });
         }, 100);
-    }
-
-    async connectToGoogle() {
-        // Simulate Google Classroom API connection
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                // In a real implementation, this would handle Google OAuth
-                resolve();
-            }, 1000);
-        });
     }
 
     exportData() {
