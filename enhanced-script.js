@@ -1,21 +1,64 @@
 class EnhancedAssignmentTracker {
     constructor() {
         this.assignments = JSON.parse(localStorage.getItem('assignments')) || [];
+        this.currentView = 'home';
         this.currentMonth = new Date().getMonth();
         this.currentYear = new Date().getFullYear();
-        this.currentView = 'home';
         this.isDarkMode = localStorage.getItem('darkMode') === 'true';
         this.completionStreak = parseInt(localStorage.getItem('completionStreak')) || 0;
-        this.canvasConnected = localStorage.getItem('canvasConnected') === 'true';
-        this.googleConnected = localStorage.getItem('googleConnected') === 'true';
-        this.notificationsQueue = [];
+        this.lastCompletionDate = localStorage.getItem('lastCompletionDate');
         
-        // Add sample assignments if none exist
-        if (this.assignments.length === 0) {
-            this.addSampleAssignments();
+        // Initialize FPS counter
+        this.initializeFPSCounter();
+        
+        // SIMPLIFIED INITIALIZATION FOR DEBUGGING
+        console.log('🔧 Starting simplified initialization...');
+        
+        try {
+            this.init();
+            console.log('✅ init() completed');
+        } catch (error) {
+            console.error('❌ Error in init():', error);
         }
         
-        this.init();
+        try {
+            this.setupEventListeners();
+            console.log('✅ setupEventListeners() completed');
+        } catch (error) {
+            console.error('❌ Error in setupEventListeners():', error);
+        }
+        
+        try {
+            // Add sample assignments if none exist
+            if (this.assignments.length === 0) {
+                this.addSampleAssignments();
+            }
+            console.log('✅ Sample assignments added if needed');
+        } catch (error) {
+            console.error('❌ Error adding sample assignments:', error);
+        }
+        
+        try {
+            this.renderAssignments();
+            console.log('✅ renderAssignments() completed');
+        } catch (error) {
+            console.error('❌ Error in renderAssignments():', error);
+        }
+        
+        try {
+            this.updateStatistics();
+            console.log('✅ updateStatistics() completed');
+        } catch (error) {
+            console.error('❌ Error in updateStatistics():', error);
+        }
+        
+        // Apply visual settings after everything else is initialized
+        try {
+            this.applyGlobalVisualSettings();
+            console.log('✅ applyGlobalVisualSettings() completed');
+        } catch (error) {
+            console.error('❌ Error in applyGlobalVisualSettings():', error);
+        }
     }
 
     addSampleAssignments() {
@@ -118,6 +161,7 @@ class EnhancedAssignmentTracker {
     }
 
     applySavedStylesImmediate() {
+        // Restore all visual settings
         const primaryColor = localStorage.getItem('primary-color') || '#667eea';
         const secondaryColor = localStorage.getItem('secondary-color') || '#764ba2';
         const accentColor = localStorage.getItem('accent-color') || '#f59e0b';
@@ -129,11 +173,21 @@ class EnhancedAssignmentTracker {
 
         this.applyBackground(backgroundType);
         
+        // Ensure video backgrounds are restored if they exist
+        if (backgroundType === 'video') {
+            const savedVideo = localStorage.getItem('background-video');
+            if (savedVideo) {
+                console.log('🎬 Restoring video background on app start');
+                this.restoreVideoBackground(savedVideo);
+            }
+        }
+        
+        // Restore dark mode
         if (this.isDarkMode) {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
         
-        // Apply performance settings
+        // Restore performance settings
         const glassmorphismEnabled = localStorage.getItem('glassmorphism-enabled') !== 'false';
         if (!glassmorphismEnabled) {
             document.body.classList.add('no-glassmorphism');
@@ -142,6 +196,72 @@ class EnhancedAssignmentTracker {
         const animationsEnabled = localStorage.getItem('animations-enabled') !== 'false';
         if (!animationsEnabled) {
             document.body.classList.add('no-animations');
+        }
+        
+        // Restore performance mode
+        const performanceModeEnabled = localStorage.getItem('performance-mode') === 'true';
+        if (performanceModeEnabled) {
+            document.body.classList.add('performance-mode');
+            // Performance mode forces glassmorphism off but keeps animations unless user disabled them
+            document.body.classList.add('no-glassmorphism');
+        }
+        
+        // Restore visual reduction
+        const visualReductionEnabled = localStorage.getItem('visual-reduction') === 'true';
+        if (visualReductionEnabled) {
+            document.body.classList.add('visual-reduction');
+        }
+        
+        // Restore premium state immediately
+        this.restorePremiumState();
+        
+        // Restore background image if exists
+        this.restoreBackgroundImage();
+    }
+
+    restorePremiumState() {
+        const isPremium = localStorage.getItem('premium-user') === 'true';
+        const trialStart = localStorage.getItem('trial-start');
+        const subscriptionType = localStorage.getItem('subscription-type');
+        
+        if (isPremium) {
+            if (trialStart && !subscriptionType) {
+                // Check if trial is still valid
+                const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
+                const now = Date.now();
+                const trialExpired = (now - parseInt(trialStart)) > trialDuration;
+                
+                if (trialExpired) {
+                    // Trial expired, remove premium status
+                    localStorage.removeItem('premium-user');
+                    localStorage.removeItem('trial-start');
+                    console.log('Trial expired, premium access revoked');
+                } else {
+                    // Trial still valid
+                    this.enablePremiumFeatures();
+                    console.log('Premium trial restored');
+                }
+            } else if (subscriptionType) {
+                // Has active subscription
+                this.enablePremiumFeatures();
+                console.log(`Premium subscription (${subscriptionType}) restored`);
+            }
+        }
+    }
+
+    enablePremiumFeatures() {
+        // This will be called by settings manager when it's ready
+        // For now, just mark that premium should be enabled
+        document.body.setAttribute('data-premium', 'true');
+    }
+
+    restoreBackgroundImage() {
+        const backgroundImage = localStorage.getItem('background-image');
+        if (backgroundImage) {
+            document.body.style.backgroundImage = `url(${backgroundImage})`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundRepeat = 'no-repeat';
         }
     }
 
@@ -230,6 +350,48 @@ class EnhancedAssignmentTracker {
         if (createBtn) {
             createBtn.addEventListener('click', () => {
                 window.location.href = 'create-assignment-enhanced.html';
+            });
+        }
+
+        // Quick background selector
+        const quickBgBtn = document.getElementById('quick-bg-btn');
+        const quickBgMenu = document.getElementById('quick-bg-menu');
+        
+        if (quickBgBtn && quickBgMenu) {
+            quickBgBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isVisible = quickBgMenu.style.display !== 'none';
+                quickBgMenu.style.display = isVisible ? 'none' : 'block';
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!quickBgMenu.contains(e.target) && !quickBgBtn.contains(e.target)) {
+                    quickBgMenu.style.display = 'none';
+                }
+            });
+
+            // Handle background option clicks
+            const bgOptions = document.querySelectorAll('.bg-option');
+            bgOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const type = option.dataset.type;
+                    
+                    if (type === 'gradient') {
+                        const colors = option.dataset.colors.split(',');
+                        this.applyQuickGradient(colors[0], colors[1]);
+                    } else if (type === 'solid') {
+                        const color = option.dataset.color;
+                        this.applyQuickSolid(color);
+                    }
+                    
+                    // Close menu after selection
+                    quickBgMenu.style.display = 'none';
+                    
+                    // Show notification
+                    const bgName = option.querySelector('span').textContent;
+                    this.showNotification(`🎨 ${bgName} background applied!`, 'success');
+                });
             });
         }
 
@@ -324,7 +486,7 @@ class EnhancedAssignmentTracker {
         }
     }
 
-    // Enhanced toggle with animations
+    // Enhanced toggle with smooth animations
     toggleAssignment(id) {
         const assignment = this.assignments.find(a => a.id == id);
         if (!assignment) return;
@@ -333,30 +495,114 @@ class EnhancedAssignmentTracker {
         const card = document.querySelector(`[data-id="${id}"]`);
         
         if (checkbox && card) {
+            // Prevent multiple clicks during animation
+            if (checkbox.classList.contains('checking')) return;
+            
+            // Add immediate visual feedback
             checkbox.classList.add('checking');
             card.classList.add('completing');
             
+            // Smooth transition with proper timing
+            const animationDuration = localStorage.getItem('animations-enabled') === 'false' ? 50 : 400;
+            
             setTimeout(() => {
                 assignment.completed = !assignment.completed;
+                assignment.completedDate = assignment.completed ? new Date().toISOString().split('T')[0] : null;
                 
                 if (assignment.completed) {
                     this.updateCompletionStreak();
-                    this.showNotification(`🎉 Great job! "${assignment.title}" completed!`);
+                    
+                    // Add completed styling immediately
+                    checkbox.classList.add('checked');
+                    card.classList.add('completed');
                     
                     // Trigger completion celebration VFX
                     const celebrationsEnabled = localStorage.getItem('completion-celebrations') !== 'false';
                     if (celebrationsEnabled) {
                         this.triggerCompletionCelebration(checkbox);
                     }
+                    
+                    this.showNotification(`🎉 Great job! "${assignment.title}" completed!`, 'success');
+                    
+                    // Smooth move to completed section after animation
+                    setTimeout(() => {
+                        this.smoothMoveToCompleted(card, assignment);
+                    }, 600);
+                    
                 } else {
-                    this.showNotification(`📝 "${assignment.title}" marked as incomplete`);
+                    checkbox.classList.remove('checked');
+                    card.classList.remove('completed');
+                    this.showNotification(`📝 "${assignment.title}" marked as incomplete`, 'info');
+                    
+                    // Move back to appropriate section
+                    setTimeout(() => {
+                        this.renderAssignments();
+                        this.updateStatistics();
+                    }, 200);
                 }
                 
                 this.saveAssignments();
-                this.renderAssignments();
-                this.updateStatistics();
-            }, 300);
+                
+                // Clean up animation classes
+                setTimeout(() => {
+                    checkbox.classList.remove('checking');
+                    card.classList.remove('completing');
+                }, animationDuration);
+                
+            }, Math.min(animationDuration * 0.75, 300));
         }
+    }
+
+    smoothMoveToCompleted(card, assignment) {
+        // Create a smooth transition to the completed section
+        const completedSection = document.getElementById('completed');
+        const completedContainer = document.getElementById('completed-assignments');
+        
+        if (!completedSection || !completedContainer) {
+            this.renderAssignments();
+            this.updateStatistics();
+            return;
+        }
+        
+        // Show completed section if hidden
+        if (completedSection.style.display === 'none') {
+            completedSection.style.display = 'block';
+            completedSection.style.opacity = '0';
+            completedSection.style.transform = 'translateY(20px)';
+            
+            // Animate in the completed section
+            requestAnimationFrame(() => {
+                completedSection.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                completedSection.style.opacity = '1';
+                completedSection.style.transform = 'translateY(0)';
+            });
+        }
+        
+        // Clone the card for smooth transition
+        const clonedCard = card.cloneNode(true);
+        clonedCard.style.opacity = '0';
+        clonedCard.style.transform = 'scale(0.9)';
+        
+        // Add to completed section
+        completedContainer.appendChild(clonedCard);
+        
+        // Animate the cloned card in
+        requestAnimationFrame(() => {
+            clonedCard.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            clonedCard.style.opacity = '1';
+            clonedCard.style.transform = 'scale(1)';
+        });
+        
+        // Fade out original card
+        card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.6, 1)';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-20px) scale(0.95)';
+        
+        // Clean up and re-render after transition
+        setTimeout(() => {
+            this.renderAssignments();
+            this.updateStatistics();
+        }, 400);
     }
 
     triggerCompletionCelebration(checkboxElement) {
@@ -559,35 +805,28 @@ class EnhancedAssignmentTracker {
     }
 
     showDeleteConfirmation(assignment) {
+        // Auto-close any existing overlays first
+        this.closeAllOverlays();
+        
         const modal = document.createElement('div');
         modal.className = 'delete-confirmation-modal';
         modal.innerHTML = `
             <div class="delete-confirmation-content glass-card">
                 <div class="delete-confirmation-header">
                     <h3>🗑️ Delete Assignment</h3>
+                    <button class="close-btn" onclick="this.closest('.delete-confirmation-modal').remove()">×</button>
                 </div>
-                
                 <div class="delete-confirmation-body">
-                    <div class="assignment-preview">
-                        <div class="assignment-title">${assignment.title}</div>
-                        <div class="assignment-course">${assignment.courseName || 'No course'}</div>
-                        <div class="assignment-due">Due: ${this.formatDueDate(assignment.dueDate)}</div>
-                    </div>
-                    
-                    <p>Are you sure you want to delete this assignment? This action cannot be undone.</p>
-                    
-                    <div class="delete-confirmation-actions">
-                        <button class="btn btn-secondary" onclick="this.closest('.delete-confirmation-modal').remove()">
-                            Cancel
-                        </button>
-                        <button class="btn danger-btn" onclick="tracker.confirmDeleteAssignment('${assignment.id}')">
-                            Delete Assignment
-                        </button>
-                    </div>
+                    <p>Are you sure you want to delete "<strong>${assignment.title}</strong>"?</p>
+                    <p class="warning-text">This action cannot be undone.</p>
+                </div>
+                <div class="delete-confirmation-actions">
+                    <button class="btn btn-secondary" onclick="this.closest('.delete-confirmation-modal').remove()">Cancel</button>
+                    <button class="btn btn-danger" onclick="tracker.confirmDelete('${assignment.id}')">Delete</button>
                 </div>
             </div>
         `;
-
+        
         document.body.appendChild(modal);
         
         // Add click outside to close
@@ -745,20 +984,120 @@ class EnhancedAssignmentTracker {
 
     // Enhanced notification system
     showNotification(message, type = 'info', duration = 3000) {
+        // Check if notifications are enabled
+        const notificationsEnabled = localStorage.getItem('push-notifications') !== 'false';
+        if (!notificationsEnabled) return;
+
+        // Create notification container if it doesn't exist
+        let notificationContainer = document.querySelector('.notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.className = 'notification-container';
+            document.body.appendChild(notificationContainer);
+        }
+
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        notification.textContent = message;
         
-        document.body.appendChild(notification);
+        // Add icon based on type
+        const icon = this.getNotificationIcon(type);
+        notification.innerHTML = `
+            <div class="notification-icon">${icon}</div>
+            <div class="notification-content">
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
         
-        setTimeout(() => {
-            notification.classList.add('hiding');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
+        // Add to container (stack notifications)
+        notificationContainer.appendChild(notification);
+        
+        // Trigger entrance animation
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        // Auto-hide notification
+        const hideTimeout = setTimeout(() => {
+            this.hideNotification(notification);
         }, duration);
+
+        // Clear timeout if user manually closes
+        notification.querySelector('.notification-close').addEventListener('click', () => {
+            clearTimeout(hideTimeout);
+        });
+
+        // Add click to dismiss functionality
+        notification.addEventListener('click', (e) => {
+            if (e.target !== notification.querySelector('.notification-close')) {
+                clearTimeout(hideTimeout);
+                this.hideNotification(notification);
+            }
+        });
+
+        // Limit number of notifications (max 5)
+        const notifications = notificationContainer.querySelectorAll('.notification');
+        if (notifications.length > 5) {
+            this.hideNotification(notifications[0]);
+        }
+    }
+
+    getNotificationIcon(type) {
+        const icons = {
+            'success': '✅',
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️',
+            'loading': '⏳'
+        };
+        return icons[type] || 'ℹ️';
+    }
+
+    hideNotification(notification) {
+        notification.classList.add('hiding');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }
+
+    // Show persistent notification that requires user action
+    showPersistentNotification(message, type = 'info', actions = []) {
+        const notificationsEnabled = localStorage.getItem('push-notifications') !== 'false';
+        if (!notificationsEnabled) return;
+
+        let notificationContainer = document.querySelector('.notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.className = 'notification-container';
+            document.body.appendChild(notificationContainer);
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type} persistent`;
+        
+        const icon = this.getNotificationIcon(type);
+        const actionsHtml = actions.map(action => 
+            `<button class="notification-action" onclick="${action.callback}">${action.text}</button>`
+        ).join('');
+
+        notification.innerHTML = `
+            <div class="notification-icon">${icon}</div>
+            <div class="notification-content">
+                <div class="notification-message">${message}</div>
+                ${actionsHtml ? `<div class="notification-actions">${actionsHtml}</div>` : ''}
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        notificationContainer.appendChild(notification);
+        
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        return notification;
     }
 
     // Calendar with tap-and-hold pip markers
@@ -773,12 +1112,18 @@ class EnhancedAssignmentTracker {
             monthYear.textContent = `${monthNames[this.currentMonth]} ${this.currentYear}`;
         }
 
-        calendarGrid.innerHTML = '';
+        // Clear efficiently instead of innerHTML
+        while (calendarGrid.firstChild) {
+            calendarGrid.removeChild(calendarGrid.firstChild);
+        }
 
         const firstDay = new Date(this.currentYear, this.currentMonth, 1);
         const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
         const daysInMonth = lastDay.getDate();
         const startingDayOfWeek = firstDay.getDay();
+
+        // Use DocumentFragment for batch calendar operations - major FPS improvement
+        const fragment = document.createDocumentFragment();
 
         // Add day headers
         const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -786,14 +1131,14 @@ class EnhancedAssignmentTracker {
             const header = document.createElement('div');
             header.className = 'calendar-day-header';
             header.textContent = day;
-            calendarGrid.appendChild(header);
+            fragment.appendChild(header);
         });
 
         // Add empty cells for days before the first day of the month
         for (let i = 0; i < startingDayOfWeek; i++) {
             const emptyDay = document.createElement('div');
             emptyDay.className = 'calendar-day empty';
-            calendarGrid.appendChild(emptyDay);
+            fragment.appendChild(emptyDay);
         }
 
         // Add days of the month
@@ -804,17 +1149,50 @@ class EnhancedAssignmentTracker {
             const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const dayAssignments = this.assignments.filter(a => a.dueDate === dateStr && !a.completed);
             
-            dayElement.innerHTML = `
-                <div class="calendar-day-number">${day}</div>
-                ${dayAssignments.length > 0 ? `<div class="calendar-assignment-count">${dayAssignments.length}</div>` : ''}
-            `;
+            // Create elements instead of innerHTML for better performance
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'calendar-day-number';
+            dayNumber.textContent = day;
+            dayElement.appendChild(dayNumber);
 
             if (dayAssignments.length > 0) {
-                this.addCalendarDayListeners(dayElement, dateStr, dayAssignments);
+                const assignmentCount = document.createElement('div');
+                assignmentCount.className = 'calendar-assignment-count';
+                assignmentCount.textContent = dayAssignments.length;
+                dayElement.appendChild(assignmentCount);
             }
 
-            calendarGrid.appendChild(dayElement);
+            // Store date for event delegation
+            dayElement.dataset.date = dateStr;
+
+            fragment.appendChild(dayElement);
         }
+        
+        // Single DOM operation for entire calendar - major FPS boost
+        calendarGrid.appendChild(fragment);
+        
+        // Add event delegation for calendar clicks instead of individual listeners
+        this.setupCalendarEventDelegation();
+    }
+
+    setupCalendarEventDelegation() {
+        const calendarGrid = document.getElementById('calendar-grid');
+        if (!calendarGrid || calendarGrid.dataset.delegationSetup) return;
+        
+        // Mark as setup to prevent duplicate listeners
+        calendarGrid.dataset.delegationSetup = 'true';
+        
+        // Single event listener for entire calendar - major performance improvement
+        calendarGrid.addEventListener('click', (e) => {
+            const dayElement = e.target.closest('.calendar-day');
+            if (!dayElement || dayElement.classList.contains('empty')) return;
+            
+            const dateStr = dayElement.dataset.date;
+            if (dateStr) {
+                const assignments = this.assignments.filter(a => a.dueDate === dateStr && !a.completed);
+                this.showCalendarPopup(dateStr, assignments);
+            }
+        });
     }
 
     addCalendarDayListeners(dayElement, dateStr, assignments) {
@@ -863,7 +1241,8 @@ class EnhancedAssignmentTracker {
     }
 
     showPipMarker(event, dateStr, assignments) {
-        this.hidePipMarker();
+        // Auto-close existing overlays before showing pip
+        this.closeAllOverlays();
 
         const pip = document.createElement('div');
         pip.className = 'pip-marker';
@@ -906,6 +1285,9 @@ class EnhancedAssignmentTracker {
     }
 
     showCalendarPopup(dateStr, assignments) {
+        // Auto-close any existing overlays first
+        this.closeAllOverlays();
+        
         // Show a simple popup for calendar day click
         const popup = document.createElement('div');
         popup.className = 'calendar-popup';
@@ -975,12 +1357,15 @@ class EnhancedAssignmentTracker {
     }
 
     renderAssignments() {
-        this.renderPriorityAssignments();
-        this.renderAllAssignments();
-        this.updateStatistics();
+        // Debounce renders to prevent FPS drops
+        if (this.renderTimeout) return;
+        this.renderTimeout = setTimeout(() => {
+            this.actualRenderAssignments();
+            this.renderTimeout = null;
+        }, 16); // ~60fps
     }
 
-    renderPriorityAssignments() {
+    actualRenderAssignments() {
         const highPriorityContainer = document.getElementById('high-priority-assignments');
         const comingUpContainer = document.getElementById('coming-up-assignments');
         const worryLaterContainer = document.getElementById('worry-later-assignments');
@@ -989,11 +1374,18 @@ class EnhancedAssignmentTracker {
 
         if (!highPriorityContainer || !comingUpContainer || !worryLaterContainer || !completedContainer) return;
 
-        // Clear containers
-        highPriorityContainer.innerHTML = '';
-        comingUpContainer.innerHTML = '';
-        worryLaterContainer.innerHTML = '';
-        completedContainer.innerHTML = '';
+        // Use DocumentFragment for better performance - prevents layout thrashing
+        const clearContainer = (container) => {
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+        };
+        
+        // Clear containers efficiently
+        clearContainer(highPriorityContainer);
+        clearContainer(comingUpContainer);
+        clearContainer(worryLaterContainer);
+        clearContainer(completedContainer);
 
         const now = new Date();
         const highPriorityAssignments = [];
@@ -1034,12 +1426,19 @@ class EnhancedAssignmentTracker {
 
     renderAssignmentSection(container, assignments, emptyMessage) {
         if (assignments.length === 0) {
-            container.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+            // Use textContent and createElement instead of innerHTML for better performance
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.textContent = emptyMessage;
+            container.appendChild(emptyDiv);
         } else {
+            // Use DocumentFragment for batch DOM operations - major FPS improvement
+            const fragment = document.createDocumentFragment();
             assignments.forEach(assignment => {
                 const card = this.createAssignmentCard(assignment);
-                container.appendChild(card);
+                fragment.appendChild(card);
             });
+            container.appendChild(fragment); // Single DOM operation instead of multiple
         }
     }
 
@@ -1047,24 +1446,38 @@ class EnhancedAssignmentTracker {
         const container = document.getElementById('all-assignments');
         if (!container) return;
 
-        container.innerHTML = '';
+        // Clear efficiently
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
         
         if (this.assignments.length === 0) {
-            container.innerHTML = '<div class="empty-state">No assignments yet. Create your first assignment!</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.textContent = 'No assignments yet. Create your first assignment!';
+            container.appendChild(emptyDiv);
             return;
         }
 
         const filteredAssignments = this.getFilteredAssignments();
         
         if (filteredAssignments.length === 0) {
-            container.innerHTML = '<div class="empty-state">No assignments match your filters</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.textContent = 'No assignments match your filters';
+            container.appendChild(emptyDiv);
             return;
         }
 
+        // Use DocumentFragment for batch operations
+        const fragment = document.createDocumentFragment();
+
         filteredAssignments.forEach(assignment => {
             const card = this.createAssignmentCard(assignment);
-            container.appendChild(card);
+            fragment.appendChild(card);
         });
+        
+        container.appendChild(fragment); // Single DOM operation
     }
 
     getFilteredAssignments() {
@@ -1124,26 +1537,113 @@ class EnhancedAssignmentTracker {
     }
 
     switchToView(viewId) {
+        // Auto-close any open overlays when switching views
+        this.closeAllOverlays();
+        
         // Hide all views
         document.querySelectorAll('.content-view').forEach(view => {
             view.style.display = 'none';
         });
 
         // Show selected view
-        const targetView = document.getElementById(viewId);
-        if (targetView) {
-            targetView.style.display = 'block';
-            this.currentView = viewId;
-
-            // Render content based on view
-            if (viewId === 'calendar-view') {
-                this.renderCalendar();
+        const selectedView = document.getElementById(viewId);
+        if (selectedView) {
+            selectedView.style.display = 'block';
+            
+            // Update view-specific content
+            if (viewId === 'home-view') {
+                this.renderAssignments();
+                this.updateStatistics();
             } else if (viewId === 'all-view') {
                 this.renderAllAssignments();
-            } else if (viewId === 'home-view') {
-                this.renderPriorityAssignments();
+            } else if (viewId === 'calendar-view') {
+                this.renderCalendar();
             }
+            
+            // Reapply visual settings to ensure consistency across screens
+            this.applyGlobalVisualSettings();
         }
+    }
+
+    closeAllOverlays() {
+        // Close all modal overlays
+        const overlays = document.querySelectorAll(`
+            .delete-confirmation-modal,
+            .calendar-popup,
+            .pip-marker,
+            .streak-milestone,
+            .dev-panel,
+            .dev-clear-modal,
+            .dev-password-modal,
+            .notification.persistent
+        `);
+        
+        overlays.forEach(overlay => {
+            if (overlay && overlay.parentNode) {
+                overlay.remove();
+            }
+        });
+        
+        // Close settings-specific overlays
+        if (window.settingsManager) {
+            window.settingsManager.closeAllOverlays();
+        }
+        
+        this.logPerformanceEvent('Overlays Closed', `${overlays.length} overlays`);
+    }
+
+    applyGlobalVisualSettings() {
+        // Apply visual settings consistently across all screens
+        console.log('🎨 Applying global visual settings to all screens');
+        
+        // Performance mode
+        const performanceModeEnabled = localStorage.getItem('performance-mode') === 'true';
+        if (performanceModeEnabled) {
+            document.body.classList.add('performance-mode');
+            // Performance mode forces glassmorphism off but keeps animations unless user disabled them
+            document.body.classList.add('no-glassmorphism');
+        } else {
+            document.body.classList.remove('performance-mode');
+        }
+        
+        // Glassmorphism settings
+        const glassmorphismEnabled = localStorage.getItem('glassmorphism-enabled') !== 'false';
+        if (!glassmorphismEnabled || performanceModeEnabled) {
+            document.body.classList.add('no-glassmorphism');
+        } else {
+            document.body.classList.remove('no-glassmorphism');
+        }
+        
+        // Animation settings
+        const animationsEnabled = localStorage.getItem('animations-enabled') !== 'false';
+        if (!animationsEnabled) {
+            document.body.classList.add('no-animations');
+        } else {
+            document.body.classList.remove('no-animations');
+        }
+        
+        // Visual reduction
+        const visualReduction = localStorage.getItem('visual-reduction') === 'true';
+        if (visualReduction) {
+            document.body.classList.add('reduced-visuals');
+        } else {
+            document.body.classList.remove('reduced-visuals');
+        }
+        
+        // Dark mode
+        if (this.isDarkMode) {
+            document.body.setAttribute('data-theme', 'dark');
+        } else {
+            document.body.removeAttribute('data-theme');
+        }
+        
+        console.log('✅ Global visual settings applied:', {
+            performanceMode: performanceModeEnabled,
+            glassmorphism: glassmorphismEnabled && !performanceModeEnabled,
+            animations: animationsEnabled,
+            visualReduction: visualReduction,
+            darkMode: this.isDarkMode
+        });
     }
 
     setActiveNav(activeId) {
@@ -1231,10 +1731,17 @@ class EnhancedAssignmentTracker {
         
         // Toggle dev mode if already active
         if (localStorage.getItem('dev-mode') === 'true') {
-            this.closeDevPanel();
-            return;
+            this.showDevPanel();
+        } else {
+            this.showDevPanel();
         }
+    }
 
+    showDevPanel() {
+        // Auto-close existing overlays first
+        this.closeAllOverlays();
+        
+        // Enable dev mode
         localStorage.setItem('dev-mode', 'true');
         
         // Create dev panel
@@ -1309,8 +1816,8 @@ class EnhancedAssignmentTracker {
 
         document.body.appendChild(devPanel);
         
-        // Add dev panel styles
-        this.addDevPanelStyles();
+        // Apply global visual settings to all screens
+        this.applyGlobalVisualSettings();
         
         // Bind methods to window for onclick handlers
         window.closeDevPanel = () => this.closeDevPanel();
@@ -1937,5 +2444,206 @@ class EnhancedAssignmentTracker {
             }
         `;
         document.head.appendChild(styles);
+    }
+
+    // FPS Counter for performance monitoring
+    initializeFPSCounter() {
+        this.fps = 0;
+        this.frameCount = 0;
+        this.lastTime = performance.now();
+        this.fpsHistory = [];
+        this.maxFPSHistory = 60; // Keep last 60 FPS readings
+        
+        // Start FPS monitoring
+        this.startFPSMonitoring();
+        
+        console.log('🎯 FPS Counter initialized - Performance monitoring active');
+        console.log('📊 Use tracker.showFPSStats() to view detailed performance stats');
+    }
+
+    startFPSMonitoring() {
+        const updateFPS = (currentTime) => {
+            this.frameCount++;
+            
+            // Calculate FPS every second
+            if (currentTime - this.lastTime >= 1000) {
+                this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                
+                // Add to history
+                this.fpsHistory.push({
+                    fps: this.fps,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                
+                // Keep only recent history
+                if (this.fpsHistory.length > this.maxFPSHistory) {
+                    this.fpsHistory.shift();
+                }
+                
+                // Log FPS to console with performance indicators
+                const performanceLevel = this.getPerformanceLevel(this.fps);
+                console.log(`🚀 FPS: ${this.fps} ${performanceLevel.emoji} ${performanceLevel.status}`);
+                
+                // Reset counters
+                this.frameCount = 0;
+                this.lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(updateFPS);
+        };
+        
+        requestAnimationFrame(updateFPS);
+    }
+
+    getPerformanceLevel(fps) {
+        if (fps >= 55) {
+            return { emoji: '🟢', status: 'EXCELLENT' };
+        } else if (fps >= 45) {
+            return { emoji: '🟡', status: 'GOOD' };
+        } else if (fps >= 30) {
+            return { emoji: '🟠', status: 'FAIR' };
+        } else {
+            return { emoji: '🔴', status: 'POOR - Consider enabling Performance Mode' };
+        }
+    }
+
+    showFPSStats() {
+        if (this.fpsHistory.length === 0) {
+            console.log('📊 No FPS data available yet. Wait a few seconds...');
+            return;
+        }
+
+        const avgFPS = Math.round(this.fpsHistory.reduce((sum, entry) => sum + entry.fps, 0) / this.fpsHistory.length);
+        const minFPS = Math.min(...this.fpsHistory.map(entry => entry.fps));
+        const maxFPS = Math.max(...this.fpsHistory.map(entry => entry.fps));
+        const currentFPS = this.fps;
+
+        console.group('📊 StudyFlow Performance Statistics');
+        console.log(`🎯 Current FPS: ${currentFPS}`);
+        console.log(`📈 Average FPS: ${avgFPS}`);
+        console.log(`⬆️ Peak FPS: ${maxFPS}`);
+        console.log(`⬇️ Lowest FPS: ${minFPS}`);
+        console.log(`📋 Samples: ${this.fpsHistory.length}`);
+        
+        const performanceMode = document.body.classList.contains('performance-mode');
+        const glassmorphism = !document.body.classList.contains('no-glassmorphism');
+        const animations = !document.body.classList.contains('no-animations');
+        
+        console.log('⚙️ Current Settings:');
+        console.log(`   Performance Mode: ${performanceMode ? '✅ ON' : '❌ OFF'}`);
+        console.log(`   Glassmorphism: ${glassmorphism ? '✅ ON' : '❌ OFF'}`);
+        console.log(`   Animations: ${animations ? '✅ ON' : '❌ OFF'}`);
+        
+        if (avgFPS < 30) {
+            console.log('💡 Performance Tips:');
+            console.log('   • Enable Performance Mode in Settings');
+            console.log('   • Disable Glassmorphism effects');
+            console.log('   • Reduce animations');
+        }
+        
+        console.groupEnd();
+    }
+
+    logPerformanceEvent(event, details = '') {
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`⚡ [${timestamp}] ${event} ${details} (FPS: ${this.fps})`);
+    }
+
+    applyQuickGradient(color1, color2) {
+        // Update CSS variables
+        document.documentElement.style.setProperty('--primary-color', color1);
+        document.documentElement.style.setProperty('--secondary-color', color2);
+        
+        // Apply gradient background
+        document.body.style.background = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
+        document.body.classList.remove('image-bg', 'solid-bg', 'pattern-bg', 'video-bg');
+        
+        // Save to localStorage
+        localStorage.setItem('primary-color', color1);
+        localStorage.setItem('secondary-color', color2);
+        localStorage.setItem('background-type', 'gradient');
+        
+        console.log(`🎨 Quick gradient applied: ${color1} → ${color2}`);
+    }
+
+    applyQuickSolid(color) {
+        // Apply solid background
+        document.body.style.background = color;
+        document.body.classList.remove('image-bg', 'pattern-bg', 'video-bg');
+        document.body.classList.add('solid-bg');
+        
+        // Save to localStorage
+        localStorage.setItem('background-solid-color', color);
+        localStorage.setItem('background-type', 'solid');
+        
+        console.log(`🎨 Quick solid background applied: ${color}`);
+    }
+
+    restoreVideoBackground(videoData) {
+        // Create video element for background
+        const videoElement = document.createElement('video');
+        videoElement.className = 'background-video';
+        videoElement.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            object-position: center;
+            z-index: -3;
+            pointer-events: none;
+            background: #000;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        `;
+        
+        // Video attributes for seamless loop
+        videoElement.autoplay = true;
+        videoElement.muted = true;
+        videoElement.loop = true;
+        videoElement.playsInline = true;
+        videoElement.preload = 'metadata';
+        
+        // Set video source
+        videoElement.src = videoData;
+        
+        // Add overlay for better text readability
+        const overlay = document.createElement('div');
+        overlay.className = 'video-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -2;
+            pointer-events: none;
+        `;
+        
+        // Add to DOM
+        document.body.appendChild(videoElement);
+        document.body.appendChild(overlay);
+        document.body.classList.add('video-bg');
+        
+        // Handle video load events
+        videoElement.addEventListener('canplay', () => {
+            videoElement.play().then(() => {
+                console.log('✅ Video background restored successfully!');
+                this.showNotification('🎬 Video background restored!', 'success');
+            }).catch(e => {
+                console.warn('⚠️ Video autoplay prevented:', e);
+            });
+        });
+        
+        videoElement.addEventListener('error', () => {
+            console.error('❌ Video background failed to restore');
+            this.showNotification('Video background failed to load', 'error');
+            // Fallback to gradient
+            this.applyBackground('gradient');
+        });
+        
+        console.log('🎬 Video background restoration initiated');
     }
 }

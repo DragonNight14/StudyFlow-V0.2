@@ -47,66 +47,139 @@ class APIIntegration {
         }
     }
 
-    async syncCanvasAssignments() {
-        if (!this.canvasBaseURL || !this.canvasToken) return;
+    async syncCanvasAssignments(retryCount = 0) {
+        if (!this.canvasBaseURL || !this.canvasToken) {
+            // Try basic sync without API token
+            return this.syncCanvasBasic();
+        }
 
         try {
-            // Get all courses
-            const coursesResponse = await fetch(`${this.canvasBaseURL}/api/v1/courses?enrollment_state=active`, {
+            this.tracker.showNotification('Syncing Canvas assignments...', 'info');
+            
+            // Get all courses with better error handling
+            const coursesResponse = await this.fetchWithRetry(`${this.canvasBaseURL}/api/v1/courses?enrollment_state=active&per_page=100`, {
                 headers: {
-                    'Authorization': `Bearer ${this.canvasToken}`
+                    'Authorization': `Bearer ${this.canvasToken}`,
+                    'Accept': 'application/json'
                 }
             });
 
-            if (!coursesResponse.ok) throw new Error('Failed to fetch courses');
+            if (!coursesResponse.ok) {
+                if (coursesResponse.status === 401) {
+                    throw new Error('Invalid Canvas API token. Please check your credentials.');
+                }
+                throw new Error(`Failed to fetch courses: ${coursesResponse.status}`);
+            }
             
             const courses = await coursesResponse.json();
             
             // Get assignments from all courses
             const allAssignments = [];
+            let processedCourses = 0;
             
             for (const course of courses) {
-                const assignmentsResponse = await fetch(
-                    `${this.canvasBaseURL}/api/v1/courses/${course.id}/assignments?bucket=upcoming&per_page=50`, 
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${this.canvasToken}`
-                        }
-                    }
-                );
+                try {
+                    // Get both upcoming and current assignments
+                    const [upcomingResponse, currentResponse] = await Promise.all([
+                        this.fetchWithRetry(`${this.canvasBaseURL}/api/v1/courses/${course.id}/assignments?bucket=upcoming&per_page=50`, {
+                            headers: {
+                                'Authorization': `Bearer ${this.canvasToken}`,
+                                'Accept': 'application/json'
+                            }
+                        }),
+                        this.fetchWithRetry(`${this.canvasBaseURL}/api/v1/courses/${course.id}/assignments?bucket=overdue&per_page=50`, {
+                            headers: {
+                                'Authorization': `Bearer ${this.canvasToken}`,
+                                'Accept': 'application/json'
+                            }
+                        })
+                    ]);
 
-                if (assignmentsResponse.ok) {
-                    const assignments = await assignmentsResponse.json();
+                    const assignments = [];
+                    if (upcomingResponse.ok) {
+                        assignments.push(...await upcomingResponse.json());
+                    }
+                    if (currentResponse.ok) {
+                        assignments.push(...await currentResponse.json());
+                    }
                     
                     assignments.forEach(assignment => {
-                        if (assignment.due_at) {
+                        if (assignment.due_at && !assignment.submission) {
                             allAssignments.push({
                                 id: `canvas_${assignment.id}`,
                                 title: assignment.name,
-                                description: assignment.description || '',
+                                description: this.stripHtml(assignment.description || ''),
                                 dueDate: assignment.due_at.split('T')[0],
+                                dueTime: assignment.due_at.split('T')[1]?.split('.')[0] || '23:59',
                                 source: 'canvas',
                                 courseName: course.name,
                                 courseId: course.id,
                                 canvasId: assignment.id,
                                 completed: false,
                                 customColor: '#e13b2b', // Canvas red
-                                url: assignment.html_url
+                                url: assignment.html_url,
+                                points: assignment.points_possible || 0,
+                                submissionTypes: assignment.submission_types || [],
+                                lastSync: new Date().toISOString()
                             });
                         }
                     });
+                    
+                    processedCourses++;
+                } catch (courseError) {
+                    console.warn(`Failed to sync course ${course.name}:`, courseError);
                 }
             }
 
             // Merge with existing assignments
             this.mergeAssignments(allAssignments, 'canvas');
             
-            this.tracker.showNotification(`Synced ${allAssignments.length} assignments from Canvas`);
+            this.tracker.showNotification(`✅ Synced ${allAssignments.length} assignments from ${processedCourses} Canvas courses`);
+            localStorage.setItem('lastCanvasSync', new Date().toISOString());
             
         } catch (error) {
             console.error('Canvas sync failed:', error);
-            this.tracker.showNotification('Canvas sync failed. Check your connection.', 'error');
+            
+            if (retryCount < 2) {
+                this.tracker.showNotification(`Canvas sync failed, retrying... (${retryCount + 1}/3)`, 'warning');
+                setTimeout(() => this.syncCanvasAssignments(retryCount + 1), 2000);
+            } else {
+                this.tracker.showNotification('Canvas sync failed. Please check your connection and credentials.', 'error');
+                // Fall back to basic sync
+                this.syncCanvasBasic();
+            }
         }
+    }
+
+    async syncCanvasBasic() {
+        if (!this.canvasBaseURL) return;
+        
+        try {
+            this.tracker.showNotification('Using basic Canvas sync (no API token)', 'info');
+            // Basic sync without API token - could scrape public course pages or use alternative methods
+            // For now, just show a message about setting up API token
+            this.tracker.showNotification('For full Canvas integration, please add your API token in settings', 'info');
+        } catch (error) {
+            console.error('Basic Canvas sync failed:', error);
+        }
+    }
+
+    async fetchWithRetry(url, options, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                return response;
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+        }
+    }
+
+    stripHtml(html) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
     }
 
     // Google Classroom Integration

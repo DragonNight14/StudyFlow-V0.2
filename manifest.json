@@ -1,8 +1,8 @@
 {
-  "id": "assignment-tracker",
-  "name": "Assignment Tracker",
-  "short_name": "Assignments",
-  "description": "Track and manage your academic assignments with ease",
+  "id": "studyflow-v0.2",
+  "name": "StudyFlow - Assignment Tracker",
+  "short_name": "StudyFlow",
+  "description": "StudyFlow v0.2 - Advanced assignment tracking with Canvas integration, glassmorphism UI, and premium features",
   "dir": "ltr",
   "lang": "en",
   "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b5",

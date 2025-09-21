@@ -7,11 +7,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#667eea">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="HW Tracker">
+    <meta name="application-name" content="StudyFlow">
     <meta name="msapplication-TileColor" content="#667eea">
     <meta name="msapplication-TileImage" content="icon-192x192.png">
-    <meta name="description" content="Track and manage your academic assignments with ease">
-    <title>Assignment Tracker - Manage Your Academic Assignments</title>
+    <meta name="description" content="StudyFlow v0.2 - Advanced assignment tracking with Canvas integration and premium features">
+    <title>StudyFlow v0.2 - Advanced Assignment Tracker</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
     <link rel="apple-touch-icon" href="icon-192x192.png">
@@ -19,11 +19,60 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="settings.css">
+    
+    <!-- Fallback styles in case external CSS doesn't load -->
+    <style>
+        /* Emergency fallback styles */
+        .create-assignment-btn {
+            position: fixed !important;
+            bottom: 90px !important;
+            right: 1rem !important;
+            width: 60px !important;
+            height: 60px !important;
+            background: #f59e0b !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: white !important;
+            font-size: 24px !important;
+            z-index: 9999 !important;
+            border: none !important;
+            cursor: pointer !important;
+        }
+        
+        .bottom-nav {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 70px !important;
+            display: flex !important;
+            justify-content: space-around !important;
+            align-items: center !important;
+            z-index: 1000 !important;
+        }
+        
+        .nav-btn {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            padding: 8px !important;
+            background: none !important;
+            border: none !important;
+            cursor: pointer !important;
+        }
+        
+        .main-content {
+            padding-bottom: 90px !important;
+            min-height: 100vh !important;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
         <header>
-            <h1>Assignment Tracker</h1>
+            <h1>StudyFlow <span class="version-badge">v0.2</span></h1>
         </header>
 
         <main class="main-content">
@@ -33,26 +82,26 @@
                 <div class="stats-dashboard">
                     <div class="stat-card glass-card">
                         <div class="stat-number" id="total-assignments">0</div>
-                        <div class="stat-label">Active Tasks</div>
+                        <div class="stat-label" data-translate="activeTasks">Active Tasks</div>
                     </div>
                     <div class="stat-card glass-card">
                         <div class="stat-number" id="completed-count">0</div>
-                        <div class="stat-label">Completed</div>
+                        <div class="stat-label" data-translate="completed">Completed</div>
                     </div>
                     <div class="stat-card glass-card">
                         <div class="stat-number" id="overdue-count">0</div>
-                        <div class="stat-label">Overdue</div>
+                        <div class="stat-label" data-translate="overdue">Overdue</div>
                     </div>
                     <div class="stat-card glass-card">
                         <div class="stat-number" id="streak-count">0</div>
-                        <div class="stat-label">Day Streak</div>
+                        <div class="stat-label" data-translate="dayStreak">Day Streak</div>
                     </div>
                 </div>
 
                 <!-- Progress Bar -->
                 <div class="progress-container glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
                     <div class="progress-label">
-                        <span>Overall Progress</span>
+                        <span data-translate="overallProgress">Overall Progress</span>
                         <span id="progress-percentage">0%</span>
                     </div>
                     <div class="progress-bar">
@@ -62,35 +111,35 @@
 
                 <!-- High Priority Section -->
                 <section class="priority-section" id="high-priority">
-                    <h2>🔥 High Priority</h2>
-                    <p class="section-subtitle">Due within 4 days - Handle these first!</p>
+                    <h2 data-translate="highPriority">🔥 High Priority</h2>
+                    <p class="section-subtitle" data-translate="highPrioritySubtitle">Due within 4 days - Handle these first!</p>
                     <div class="assignments-container" id="high-priority-assignments">
-                        <div class="empty-state">No urgent assignments right now 🎉</div>
+                        <div class="empty-state" data-translate="noUrgentAssignments">No urgent assignments right now 🎉</div>
                     </div>
                 </section>
 
                 <!-- Coming Up Section -->
                 <section class="priority-section" id="coming-up">
-                    <h2>⏰ Coming Up</h2>
-                    <p class="section-subtitle">Due within 1.5 weeks - Plan ahead</p>
+                    <h2 data-translate="comingUp">⏰ Coming Up</h2>
+                    <p class="section-subtitle" data-translate="comingUpSubtitle">Due within 1.5 weeks - Plan ahead</p>
                     <div class="assignments-container" id="coming-up-assignments">
-                        <div class="empty-state">No upcoming assignments</div>
+                        <div class="empty-state" data-translate="noUpcomingAssignments">No upcoming assignments</div>
                     </div>
                 </section>
 
                 <!-- Worry About Later Section -->
                 <section class="priority-section" id="worry-later">
-                    <h2>📅 Worry About Later</h2>
-                    <p class="section-subtitle">Due in 3+ weeks - Future planning</p>
+                    <h2 data-translate="worryLater">📅 Worry About Later</h2>
+                    <p class="section-subtitle" data-translate="worryLaterSubtitle">Due in 3+ weeks - Future planning</p>
                     <div class="assignments-container" id="worry-later-assignments">
-                        <div class="empty-state">No long-term assignments</div>
+                        <div class="empty-state" data-translate="noLongTermAssignments">No long-term assignments</div>
                     </div>
                 </section>
 
                 <!-- Completed Section (Hidden by default, shown when there are completed items) -->
                 <section class="priority-section" id="completed" style="display: none;">
-                    <h2>✅ Completed</h2>
-                    <p class="section-subtitle">Great job! Keep up the momentum</p>
+                    <h2 data-translate="completedSection">✅ Completed</h2>
+                    <p class="section-subtitle" data-translate="completedSubtitle">Great job! Keep up the momentum</p>
                     <div class="assignments-container" id="completed-assignments">
                     </div>
                 </section>
@@ -168,31 +217,82 @@
         <nav class="bottom-nav">
             <button class="nav-btn active" id="home-btn">
                 <span class="nav-icon">🏠</span>
-                <span class="nav-label">Home</span>
+                <span class="nav-label" data-translate="home">Home</span>
             </button>
             <button class="nav-btn" id="all-assignments-btn">
                 <span class="nav-icon">📋</span>
-                <span class="nav-label">All</span>
+                <span class="nav-label" data-translate="allAssignments">All</span>
             </button>
             <button class="nav-btn" id="calendar-btn">
                 <span class="nav-icon">📅</span>
-                <span class="nav-label">Calendar</span>
+                <span class="nav-label" data-translate="calendar">Calendar</span>
             </button>
             <button class="nav-btn" id="settings-btn">
                 <span class="nav-icon">⚙️</span>
-                <span class="nav-label">Settings</span>
+                <span class="nav-label" data-translate="settings">Settings</span>
             </button>
         </nav>
 
         <!-- Create Assignment Button -->
         <button class="create-assignment-btn" id="create-assignment-btn">
             <span class="create-icon">📝</span>
-            <span class="create-text">Create</span>
+            <span class="create-text" data-translate="create">Create</span>
         </button>
+
+        <!-- Quick Background Selector -->
+        <button class="quick-bg-btn" id="quick-bg-btn">
+            <span class="bg-icon">🎨</span>
+        </button>
+
+        <!-- Quick Background Menu -->
+        <div class="quick-bg-menu" id="quick-bg-menu" style="display: none;">
+            <div class="quick-bg-content glass-card">
+                <h4>Quick Backgrounds</h4>
+                <div class="bg-options">
+                    <button class="bg-option" data-type="gradient" data-colors="#667eea,#764ba2">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                        <span>Default</span>
+                    </button>
+                    <button class="bg-option" data-type="gradient" data-colors="#ff6b6b,#feca57">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #ff6b6b, #feca57);"></div>
+                        <span>Sunset</span>
+                    </button>
+                    <button class="bg-option" data-type="gradient" data-colors="#48cae4,#023e8a">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #48cae4, #023e8a);"></div>
+                        <span>Ocean</span>
+                    </button>
+                    <button class="bg-option" data-type="gradient" data-colors="#a8e6cf,#2d5016">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #a8e6cf, #2d5016);"></div>
+                        <span>Forest</span>
+                    </button>
+                    <button class="bg-option" data-type="gradient" data-colors="#ff9a9e,#fecfef">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);"></div>
+                        <span>Rose</span>
+                    </button>
+                    <button class="bg-option" data-type="gradient" data-colors="#1a1a2e,#16213e">
+                        <div class="bg-preview" style="background: linear-gradient(135deg, #1a1a2e, #16213e);"></div>
+                        <span>Dark</span>
+                    </button>
+                    <button class="bg-option" data-type="solid" data-color="#2d3748">
+                        <div class="bg-preview" style="background: #2d3748;"></div>
+                        <span>Solid Dark</span>
+                    </button>
+                    <button class="bg-option" data-type="solid" data-color="#f7fafc">
+                        <div class="bg-preview" style="background: #f7fafc;"></div>
+                        <span>Solid Light</span>
+                    </button>
+                </div>
+                <div class="bg-actions">
+                    <button class="btn btn-secondary" onclick="document.getElementById('quick-bg-menu').style.display='none'">Close</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('settings-btn').click()">More Options</button>
+                </div>
+            </div>
+        </div>
     </div>
 
 
     <!-- Core Scripts -->
+    <script src="translations.js"></script>
     <script src="enhanced-script.js"></script>
     <script src="enhanced-settings.js"></script>
     <script src="assignment-editor.js"></script>
@@ -200,38 +300,114 @@
     <script src="api-integration.js"></script>
     
     <!-- Paid Features -->
-    <script src="paid-features/advanced-analytics.js"></script>
-    <script src="paid-features/cloud-sync.js"></script>
     <script src="paid-features/premium-themes.js"></script>
+    <script src="paid-features/live-wallpapers.js"></script>
     
     <!-- Initialize App -->
     <script>
         let tracker;
         let settingsManager;
         let apiIntegration;
-        let analytics;
-        let cloudSync;
         let premiumThemes;
+        let liveWallpapers;
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 DOM Content Loaded - Starting initialization...');
+            
+            // Check current visual settings
+            console.log('🔍 Current visual settings:', {
+                performanceMode: localStorage.getItem('performance-mode'),
+                glassmorphism: localStorage.getItem('glassmorphism-enabled'),
+                animations: localStorage.getItem('animations-enabled'),
+                visualReduction: localStorage.getItem('visual-reduction')
+            });
+            
+            // Test basic elements first
+            const createBtn = document.getElementById('create-assignment-btn');
+            const settingsBtn = document.getElementById('settings-btn');
+            console.log('🔍 Initial Element Check:');
+            console.log('Create Button:', createBtn ? '✅ Found' : '❌ Missing');
+            console.log('Settings Button:', settingsBtn ? '✅ Found' : '❌ Missing');
+            
             // Initialize core tracker
-            tracker = new EnhancedAssignmentTracker();
+            try {
+                console.log('📝 Initializing EnhancedAssignmentTracker...');
+                tracker = new EnhancedAssignmentTracker();
+                console.log('✅ EnhancedAssignmentTracker initialized');
+            } catch (error) {
+                console.error('❌ Error initializing EnhancedAssignmentTracker:', error);
+                return; // Stop if core tracker fails
+            }
             
             // Apply saved styles immediately
-            tracker.applySavedStylesImmediate();
+            try {
+                tracker.applySavedStylesImmediate();
+                console.log('✅ Saved styles applied');
+            } catch (error) {
+                console.error('❌ Error applying saved styles:', error);
+            }
             
-            // Initialize managers
-            settingsManager = new SettingsManager(tracker);
-            apiIntegration = new APIIntegration(tracker);
-            analytics = new AdvancedAnalytics(tracker);
-            cloudSync = new CloudSync(tracker);
-            premiumThemes = new PremiumThemes(tracker);
+            // Initialize managers one by one
+            try {
+                console.log('⚙️ Initializing Settings Manager...');
+                settingsManager = new SettingsManager(tracker);
+                console.log('✅ Settings Manager initialized');
+            } catch (error) {
+                console.error('❌ Error initializing Settings Manager:', error);
+                console.error('Error details:', error.stack);
+            }
+            
+            try {
+                console.log('🔌 Initializing API Integration...');
+                apiIntegration = new APIIntegration(tracker);
+                console.log('✅ API Integration initialized');
+            } catch (error) {
+                console.error('❌ Error initializing API Integration:', error);
+                // Continue even if this fails
+            }
+            
+            try {
+                console.log('🎨 Initializing Premium Themes...');
+                premiumThemes = new PremiumThemes(tracker);
+                console.log('✅ Premium Themes initialized');
+            } catch (error) {
+                console.error('❌ Error initializing Premium Themes:', error);
+                // Continue even if this fails
+            }
+            
+            try {
+                console.log('🖼️ Initializing Live Wallpapers...');
+                liveWallpapers = new LiveWallpapers(tracker);
+                console.log('✅ Live Wallpapers initialized');
+            } catch (error) {
+                console.error('❌ Error initializing Live Wallpapers:', error);
+                // Continue even if this fails
+            }
             
             // Override settings rendering
-            tracker.renderSettingsPage = () => settingsManager.renderSettingsPage();
+            tracker.renderSettingsPage = () => {
+                try {
+                    if (settingsManager) {
+                        settingsManager.renderSettingsPage();
+                    } else {
+                        console.error('Settings Manager not available');
+                    }
+                } catch (error) {
+                    console.error('Error rendering settings page:', error);
+                }
+            };
+            
             tracker.showSettingsView = () => {
-                tracker.switchToView('settings-view');
-                settingsManager.renderSettingsPage();
+                try {
+                    tracker.switchToView('settings-view');
+                    if (settingsManager) {
+                        settingsManager.renderSettingsPage();
+                    } else {
+                        console.error('Settings Manager not available for showSettingsView');
+                    }
+                } catch (error) {
+                    console.error('Error showing settings view:', error);
+                }
             };
             
             // Initialize API connections
@@ -240,7 +416,68 @@
             // Load premium theme if available
             premiumThemes.loadSavedTheme();
             
-            console.log('HW Tracker v2.0 - Glassmorphic Edition Loaded! 🚀');
+            console.log('StudyFlow v0.2 - Advanced Assignment Tracker Loaded! 🚀');
+            
+            // Note about CORS: If you see CORS errors, it's because you're opening the file directly.
+            // For full PWA features, serve this through a web server (e.g., Live Server extension)
+            console.log('💡 For best experience, serve through a web server to avoid CORS issues');
+            
+            // Ensure UI elements are visible
+            setTimeout(() => {
+                const createBtn = document.getElementById('create-assignment-btn');
+                const bottomNav = document.querySelector('.bottom-nav');
+                const mainContent = document.querySelector('.main-content');
+                
+                if (createBtn) {
+                    createBtn.style.display = 'flex';
+                    createBtn.style.visibility = 'visible';
+                    createBtn.style.opacity = '1';
+                    console.log('🔧 Create button visibility forced');
+                }
+                
+                if (bottomNav) {
+                    bottomNav.style.display = 'flex';
+                    bottomNav.style.visibility = 'visible';
+                    bottomNav.style.opacity = '1';
+                    console.log('🔧 Bottom nav visibility forced');
+                }
+                
+                if (mainContent) {
+                    mainContent.style.display = 'block';
+                    mainContent.style.visibility = 'visible';
+                    mainContent.style.opacity = '1';
+                    console.log('🔧 Main content visibility forced');
+                }
+            }, 500);
+            
+            // Debug: Check if key elements are present
+            setTimeout(() => {
+                const createBtn = document.getElementById('create-assignment-btn');
+                const settingsBtn = document.getElementById('settings-btn');
+                const settingsView = document.getElementById('settings-view');
+                
+                console.log('🔍 Element Check:');
+                console.log('Create Button:', createBtn ? '✅ Found' : '❌ Missing');
+                console.log('Settings Button:', settingsBtn ? '✅ Found' : '❌ Missing');
+                console.log('Settings View:', settingsView ? '✅ Found' : '❌ Missing');
+                
+                if (createBtn) {
+                    console.log('Create Button Styles:', {
+                        display: getComputedStyle(createBtn).display,
+                        visibility: getComputedStyle(createBtn).visibility,
+                        opacity: getComputedStyle(createBtn).opacity,
+                        zIndex: getComputedStyle(createBtn).zIndex
+                    });
+                }
+                
+                if (settingsBtn) {
+                    console.log('Settings Button Styles:', {
+                        display: getComputedStyle(settingsBtn).display,
+                        visibility: getComputedStyle(settingsBtn).visibility,
+                        opacity: getComputedStyle(settingsBtn).opacity
+                    });
+                }
+            }, 1000);
             
             // Secret dev access - Konami code sequence + mobile password
             let konamiSequence = [];

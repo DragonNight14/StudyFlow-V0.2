@@ -3,6 +3,93 @@ class CreateAssignmentManager {
         this.initializeEventListeners();
         this.updatePreview();
         this.setDefaultDate();
+        this.restoreAppState();
+    }
+
+    restoreAppState() {
+        // Restore background and visual settings
+        this.restoreBackground();
+        this.restoreVisualSettings();
+        this.restoreColorScheme();
+    }
+
+    restoreBackground() {
+        const backgroundType = localStorage.getItem('background-type') || 'gradient';
+        const backgroundImage = localStorage.getItem('background-image');
+        const backgroundColor = localStorage.getItem('background-solid-color');
+        const backgroundPattern = localStorage.getItem('background-pattern');
+
+        switch (backgroundType) {
+            case 'gradient':
+                this.applyGradientBackground();
+                break;
+            case 'image':
+                if (backgroundImage) {
+                    document.body.style.backgroundImage = `url(${backgroundImage})`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundRepeat = 'no-repeat';
+                }
+                break;
+            case 'solid':
+                if (backgroundColor) {
+                    document.body.style.background = backgroundColor;
+                }
+                break;
+            case 'pattern':
+                this.applyGradientBackground();
+                // Pattern would need pattern manager, fallback to gradient
+                break;
+        }
+    }
+
+    applyGradientBackground() {
+        const primaryColor = localStorage.getItem('primary-color') || '#667eea';
+        const secondaryColor = localStorage.getItem('secondary-color') || '#764ba2';
+        document.body.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+    }
+
+    restoreVisualSettings() {
+        // Restore glassmorphism setting
+        const glassmorphismEnabled = localStorage.getItem('glassmorphism-enabled') !== 'false';
+        if (!glassmorphismEnabled) {
+            document.body.classList.add('no-glassmorphism');
+        }
+        
+        // Restore animations setting
+        const animationsEnabled = localStorage.getItem('animations-enabled') !== 'false';
+        if (!animationsEnabled) {
+            document.body.classList.add('no-animations');
+        }
+        
+        // Restore performance mode
+        const performanceModeEnabled = localStorage.getItem('performance-mode') === 'true';
+        if (performanceModeEnabled) {
+            document.body.classList.add('performance-mode', 'no-animations', 'no-glassmorphism');
+        }
+        
+        // Restore visual reduction
+        const visualReductionEnabled = localStorage.getItem('visual-reduction') === 'true';
+        if (visualReductionEnabled) {
+            document.body.classList.add('visual-reduction');
+        }
+    }
+
+    restoreColorScheme() {
+        // Restore color scheme
+        const primaryColor = localStorage.getItem('primary-color') || '#667eea';
+        const secondaryColor = localStorage.getItem('secondary-color') || '#764ba2';
+        const accentColor = localStorage.getItem('accent-color') || '#f59e0b';
+
+        document.documentElement.style.setProperty('--primary-color', primaryColor);
+        document.documentElement.style.setProperty('--secondary-color', secondaryColor);
+        document.documentElement.style.setProperty('--accent-color', accentColor);
+
+        // Restore dark mode
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+        if (isDarkMode) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
     }
 
     initializeEventListeners() {

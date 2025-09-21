@@ -85,12 +85,20 @@ class SettingsManager {
                         <div class="toggle-switch ${this.tracker.isDarkMode ? 'active' : ''}" id="dark-mode-toggle"></div>
                     </div>
                     <div class="setting-item">
-                        <label for="glassmorphism">Glassmorphism Effects (high end device recommended)</label>
-                        <div class="toggle-switch active" id="glassmorphism-toggle"></div>
+                        <label for="glassmorphism">Glassmorphism Effects</label>
+                        <div class="toggle-switch ${localStorage.getItem('glassmorphism') !== 'false' ? 'active' : ''}" id="glassmorphism-toggle"></div>
                     </div>
                     <div class="setting-item">
                         <label for="animations">Smooth Animations</label>
-                        <div class="toggle-switch active" id="animations-toggle"></div>
+                        <div class="toggle-switch ${localStorage.getItem('animations') !== 'false' ? 'active' : ''}" id="animations-toggle"></div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="performance-mode">Performance Mode</label>
+                        <div class="toggle-switch ${localStorage.getItem('performance-mode') === 'true' ? 'active' : ''}" id="performance-toggle"></div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="visual-reduction">Reduce Visual Effects</label>
+                        <div class="toggle-switch ${localStorage.getItem('visual-reduction') === 'true' ? 'active' : ''}" id="visual-reduction-toggle"></div>
                     </div>
                 </div>
 
@@ -185,6 +193,7 @@ class SettingsManager {
                                 <option value="gradient">Gradient</option>
                                 <option value="pattern">Pattern</option>
                                 <option value="image">Custom Image</option>
+                                <option value="video">Video Background (Premium)</option>
                                 <option value="solid">Solid Color</option>
                             </select>
                             <input type="color" id="background-color" value="#0f172a" style="display: none;">
@@ -204,19 +213,28 @@ class SettingsManager {
                                 <div class="premium-content">
                                     <div class="premium-icon">🖼️</div>
                                     <h5>Unlock Custom Images</h5>
-                                    <p>Upload your own background images for a truly personalized experience.</p>
-                                    <button class="btn btn-premium" onclick="settingsManager.showUpgradeModal('custom-images')">Upgrade to Premium</button>
+
+                        <div class="video-upload-section" id="video-upload-section" style="display: none;">
+                            <div class="premium-gate" id="video-premium-gate">
+                                <div class="premium-content">
+                                    <div class="premium-icon">🎬</div>
+                                    <h5>Unlock Video Backgrounds</h5>
+                                    <p>Transform your workspace with stunning live video wallpapers. Perfect for creating an immersive study environment.</p>
+                                    <button class="btn btn-premium" onclick="settingsManager.showUpgradeModal('video-backgrounds')">Upgrade to Premium</button>
                                 </div>
                             </div>
-                            <div class="upload-area blurred" id="upload-area">
-                                <div class="upload-content">
-                                    <span class="upload-icon">📷</span>
+                            <div class="video-upload-area" id="video-upload-area" style="display: none;">
+                                <div class="upload-dropzone" id="video-upload-dropzone">
+                                    <div class="upload-icon">🎬</div>
                                     <p>Click to upload or drag & drop</p>
-                                    <small>Supports JPG, PNG, GIF (max 5MB)</small>
+                                    <small>Supports MP4, WebM, OGG (max 100MB)</small>
+                                    <div class="storage-tip">
+                                        💡 <strong>Tip:</strong> Larger files may take longer to load. For best performance, keep videos under 50MB
+                                    </div>
                                 </div>
-                                <input type="file" id="background-image-input" accept="image/*" style="display: none;" disabled>
+                                <input type="file" id="background-video-input" accept="video/*" style="display: none;" disabled>
                             </div>
-                            <button class="btn btn-secondary blurred" id="remove-bg-image" style="display: none;" disabled>Remove Image</button>
+                            <button class="btn btn-secondary blurred" id="remove-bg-video" style="display: none;" disabled>Remove Video</button>
                         </div>
                     </div>
                 </div>
@@ -281,8 +299,197 @@ class SettingsManager {
         // Initialize background manager
         this.backgroundManager = new BackgroundManager(this.tracker);
         
+        // Initialize background immediately to restore saved backgrounds
+        this.backgroundManager.initializeBackground();
+        
         // Apply saved settings on load
         this.applySavedSettings();
+        
+        // Initialize premium features
+        this.initializePremiumFeatures();
+        
+        // Apply current visual settings to settings page
+        this.applyCurrentVisualSettings();
+    }
+
+    initializePremiumFeatures() {
+        if (this.isPremiumUser()) {
+            // Enable image uploads
+            const imageUploadArea = document.getElementById('upload-area');
+            const imageInput = document.getElementById('background-image-input');
+            const imagePremiumGate = document.getElementById('image-premium-gate');
+            
+            if (imageUploadArea) imageUploadArea.classList.remove('blurred');
+            if (imageInput) imageInput.disabled = false;
+            if (imagePremiumGate) imagePremiumGate.style.display = 'none';
+            
+            // Enable video uploads
+            const videoUploadArea = document.getElementById('video-upload-area');
+            const videoInput = document.getElementById('background-video-input');
+            const videoPremiumGate = document.getElementById('video-premium-gate');
+            const removeVideoBtn = document.getElementById('remove-bg-video');
+            
+            if (videoUploadArea) {
+                videoUploadArea.style.display = 'block';
+                videoUploadArea.classList.remove('blurred');
+            }
+            if (videoInput) videoInput.disabled = false;
+            if (videoPremiumGate) videoPremiumGate.style.display = 'none';
+            if (removeVideoBtn) {
+                removeVideoBtn.disabled = false;
+                removeVideoBtn.classList.remove('blurred');
+            }
+            
+            console.log('🎬 Premium features enabled - Video backgrounds available');
+        } else {
+            console.log('🔒 Premium features locked - Upgrade to unlock video backgrounds');
+            console.log('💡 To test video backgrounds, run: tracker.unlockPremium()');
+        }
+    }
+
+    applyCurrentVisualSettings() {
+        // Get current visual settings from body classes and localStorage
+        const performanceMode = document.body.classList.contains('performance-mode');
+        const glassmorphismDisabled = document.body.classList.contains('no-glassmorphism');
+        const animationsDisabled = document.body.classList.contains('no-animations');
+        const visualReduction = localStorage.getItem('visual-reduction') === 'true';
+
+        console.log('🎨 Applying visual settings to settings page:', {
+            performanceMode,
+            glassmorphismDisabled,
+            animationsDisabled,
+            visualReduction
+        });
+
+        // Apply performance mode styles to settings
+        if (performanceMode) {
+            document.body.classList.add('settings-performance-mode');
+            this.applyPerformanceModeToSettings();
+        }
+
+        // Apply glassmorphism settings
+        if (glassmorphismDisabled) {
+            document.body.classList.add('settings-no-glass');
+            this.disableGlassmorphismInSettings();
+        }
+
+        // Apply animation settings
+        if (animationsDisabled) {
+            document.body.classList.add('settings-no-animations');
+            this.disableAnimationsInSettings();
+        }
+
+        // Apply visual reduction
+        if (visualReduction) {
+            document.body.classList.add('settings-reduced-visuals');
+            this.applyVisualReductionToSettings();
+        }
+    }
+
+    applyPerformanceModeToSettings() {
+        // Make settings elements more performance-friendly
+        const glassCards = document.querySelectorAll('#settings-content .glass-card');
+        glassCards.forEach(card => {
+            card.style.backdropFilter = 'none';
+            card.style.webkitBackdropFilter = 'none';
+            card.style.background = 'rgba(255, 255, 255, 0.1)';
+            card.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        });
+
+        // Simplify premium gates
+        const premiumGates = document.querySelectorAll('.premium-gate');
+        premiumGates.forEach(gate => {
+            gate.style.backdropFilter = 'none';
+            gate.style.background = 'rgba(0, 0, 0, 0.2)';
+        });
+
+        console.log('⚡ Performance mode applied to settings');
+    }
+
+    disableGlassmorphismInSettings() {
+        // Remove glass effects from settings elements
+        const settingsContainer = document.getElementById('settings-content');
+        if (settingsContainer) {
+            settingsContainer.classList.add('no-glass-effects');
+        }
+
+        // Apply solid backgrounds instead of glass
+        const glassElements = document.querySelectorAll('#settings-content .glass-card');
+        glassElements.forEach(element => {
+            element.style.backdropFilter = 'none';
+            element.style.webkitBackdropFilter = 'none';
+            element.style.background = getComputedStyle(document.documentElement)
+                .getPropertyValue('--card-bg-solid').trim() || 'rgba(255, 255, 255, 0.95)';
+        });
+
+        console.log('🚫 Glassmorphism disabled in settings');
+    }
+
+    disableAnimationsInSettings() {
+        // Disable animations in settings
+        const settingsContainer = document.getElementById('settings-content');
+        if (settingsContainer) {
+            settingsContainer.classList.add('no-animations');
+        }
+
+        // Remove transitions from interactive elements
+        const interactiveElements = document.querySelectorAll(`
+            #settings-content .btn,
+            #settings-content .toggle-switch,
+            #settings-content .palette-option,
+            #settings-content .pattern-option
+        `);
+
+        interactiveElements.forEach(element => {
+            element.style.transition = 'none';
+            element.style.animation = 'none';
+        });
+
+        console.log('⏸️ Animations disabled in settings');
+    }
+
+    applyVisualReductionToSettings() {
+        // Apply visual reduction to settings
+        const settingsContainer = document.getElementById('settings-content');
+        if (settingsContainer) {
+            settingsContainer.classList.add('reduced-visuals');
+        }
+
+        // Reduce visual complexity
+        const decorativeElements = document.querySelectorAll(`
+            #settings-content .premium-icon,
+            #settings-content .upload-icon,
+            #settings-content .color-swatch
+        `);
+
+        decorativeElements.forEach(element => {
+            element.style.opacity = '0.7';
+            element.style.filter = 'grayscale(0.3)';
+        });
+
+        // Simplify shadows and effects
+        const cards = document.querySelectorAll('#settings-content .glass-card');
+        cards.forEach(card => {
+            card.style.boxShadow = 'none';
+            card.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        });
+
+        console.log('👁️ Visual reduction applied to settings');
+    }
+
+    updateSettingsVisuals() {
+        // Clear existing visual classes
+        document.body.classList.remove(
+            'settings-performance-mode',
+            'settings-no-glass',
+            'settings-no-animations',
+            'settings-reduced-visuals'
+        );
+
+        // Reapply current visual settings
+        setTimeout(() => {
+            this.applyCurrentVisualSettings();
+        }, 50); // Small delay to ensure DOM updates
     }
 
     initializeEventListeners() {
@@ -356,6 +563,11 @@ class SettingsManager {
         const imageInput = document.getElementById('background-image-input');
         const removeBgBtn = document.getElementById('remove-bg-image');
 
+        // Video upload functionality
+        const videoUploadArea = document.getElementById('video-upload-dropzone');
+        const videoInput = document.getElementById('background-video-input');
+        const removeVideoBtn = document.getElementById('remove-bg-video');
+
         if (uploadArea && imageInput) {
             uploadArea.addEventListener('click', () => {
                 if (!this.isPremiumUser()) {
@@ -408,6 +620,64 @@ class SettingsManager {
                 localStorage.removeItem('background-image');
                 this.backgroundManager.applyBackground('gradient');
                 removeBgBtn.style.display = 'none';
+                this.tracker.showNotification('Background image removed', 'success');
+            });
+        }
+
+        // Video upload event listeners
+        if (videoUploadArea && videoInput) {
+            videoUploadArea.addEventListener('click', () => {
+                if (!this.isPremiumUser()) {
+                    this.showUpgradeModal('video-backgrounds');
+                    return;
+                }
+                videoInput.click();
+            });
+            
+            videoUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!this.isPremiumUser()) return;
+                videoUploadArea.style.borderColor = 'var(--accent-color)';
+                videoUploadArea.style.background = 'rgba(var(--accent-color-rgb), 0.1)';
+            });
+            
+            videoUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                videoUploadArea.style.borderColor = '';
+                videoUploadArea.style.background = '';
+            });
+            
+            videoUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                videoUploadArea.style.borderColor = '';
+                videoUploadArea.style.background = '';
+                
+                if (!this.isPremiumUser()) {
+                    this.showUpgradeModal('video-backgrounds');
+                    return;
+                }
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.backgroundManager.handleVideoUpload(files[0]);
+                }
+            });
+            
+            videoInput.addEventListener('change', (e) => {
+                if (!this.isPremiumUser()) {
+                    this.showUpgradeModal('video-backgrounds');
+                    return;
+                }
+                const file = e.target.files[0];
+                if (file) {
+                    this.backgroundManager.handleVideoUpload(file);
+                }
+            });
+        }
+
+        if (removeVideoBtn) {
+            removeVideoBtn.addEventListener('click', () => {
+                this.backgroundManager.removeVideoBackground();
+                removeVideoBtn.style.display = 'none';
             });
         }
 
@@ -516,13 +786,20 @@ class SettingsManager {
                     glassmorphismToggle.classList.remove('active');
                     localStorage.setItem('glassmorphism-enabled', 'false');
                     document.body.classList.add('no-glassmorphism');
-                    this.tracker.showNotification('Glassmorphism effects disabled');
+                    // Force enable performance mode when glassmorphism is disabled
+                    this.enablePerformanceMode();
+                    this.tracker.showNotification('Glassmorphism disabled - Performance mode enabled');
                 } else {
                     glassmorphismToggle.classList.add('active');
                     localStorage.setItem('glassmorphism-enabled', 'true');
                     document.body.classList.remove('no-glassmorphism');
-                    this.tracker.showNotification('Glassmorphism effects enabled');
+                    // Force disable performance mode when glassmorphism is enabled
+                    this.disablePerformanceMode();
+                    this.tracker.showNotification('Glassmorphism enabled - Performance mode disabled');
                 }
+                
+                // Update settings visuals immediately
+                this.updateSettingsVisuals();
             });
         }
 
@@ -538,13 +815,15 @@ class SettingsManager {
                     animationsToggle.classList.remove('active');
                     localStorage.setItem('animations-enabled', 'false');
                     document.body.classList.add('no-animations');
-                    this.tracker.showNotification('Animations disabled');
                 } else {
                     animationsToggle.classList.add('active');
                     localStorage.setItem('animations-enabled', 'true');
                     document.body.classList.remove('no-animations');
-                    this.tracker.showNotification('Animations enabled');
+                    this.tracker.showNotification(`Animations ${enabled ? 'disabled' : 'enabled'}`);
                 }
+                
+                // Update settings visuals immediately
+                this.updateSettingsVisuals();
             });
         }
 
@@ -607,6 +886,44 @@ class SettingsManager {
                 }
             });
         }
+
+        // Performance mode toggle
+        const performanceToggle = document.getElementById('performance-toggle');
+        if (performanceToggle) {
+            const isEnabled = localStorage.getItem('performance-mode') === 'true';
+            if (!isEnabled) performanceToggle.classList.remove('active');
+            
+            performanceToggle.addEventListener('click', () => {
+                const enabled = performanceToggle.classList.contains('active');
+                if (enabled) {
+                    this.disablePerformanceMode();
+                } else {
+                    this.enablePerformanceMode();
+                }
+            });
+        }
+
+        // Visual reduction toggle
+        const visualReductionToggle = document.getElementById('visual-reduction-toggle');
+        if (visualReductionToggle) {
+            const isEnabled = localStorage.getItem('visual-reduction') === 'true';
+            if (!isEnabled) visualReductionToggle.classList.remove('active');
+            
+            visualReductionToggle.addEventListener('click', () => {
+                const enabled = visualReductionToggle.classList.contains('active');
+                if (enabled) {
+                    visualReductionToggle.classList.remove('active');
+                    localStorage.setItem('visual-reduction', 'false');
+                    document.body.classList.remove('visual-reduction');
+                    this.tracker.showNotification('Visual reduction disabled');
+                } else {
+                    visualReductionToggle.classList.add('active');
+                    localStorage.setItem('visual-reduction', 'true');
+                    document.body.classList.add('visual-reduction');
+                    this.tracker.showNotification('Visual reduction enabled for accessibility');
+                }
+            });
+        }
     }
 
     applySavedSettings() {
@@ -622,9 +939,124 @@ class SettingsManager {
             document.body.classList.add('no-animations');
         }
         
+        // Apply performance mode
+        const performanceModeEnabled = localStorage.getItem('performance-mode') === 'true';
+        if (performanceModeEnabled) {
+            document.body.classList.add('performance-mode');
+            // Performance mode only disables blur, not animations or glassmorphism automatically
+            // Force glassmorphism off in performance mode
+            document.body.classList.add('no-glassmorphism');
+        }
+        
+        // Apply visual reduction
+        const visualReductionEnabled = localStorage.getItem('visual-reduction') === 'true';
+        if (visualReductionEnabled) {
+            document.body.classList.add('visual-reduction');
+        }
+        
         // Apply dark mode if saved
         if (this.tracker.isDarkMode) {
             document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        
+        // Restore premium features if user has access
+        if (this.isPremiumUser()) {
+            this.enablePremiumFeatures();
+        }
+        
+        // Restore background settings
+        this.restoreBackgroundSettings();
+    }
+
+    restoreBackgroundSettings() {
+        const backgroundType = localStorage.getItem('background-type');
+        const backgroundImage = localStorage.getItem('background-image');
+        const backgroundColor = localStorage.getItem('background-color');
+        const selectedPattern = localStorage.getItem('selected-pattern');
+        
+        if (backgroundType) {
+            const backgroundSelect = document.getElementById('background-type');
+            if (backgroundSelect) {
+                backgroundSelect.value = backgroundType;
+                // Only show/hide UI elements, don't reapply background
+                this.showBackgroundOptions(backgroundType);
+            }
+        }
+        
+        if (backgroundImage) {
+            const removeBgBtn = document.getElementById('remove-bg-image');
+            if (removeBgBtn) {
+                removeBgBtn.style.display = 'block';
+            }
+        }
+
+        const backgroundVideo = localStorage.getItem('background-video');
+        if (backgroundVideo) {
+            const removeVideoBtn = document.getElementById('remove-bg-video');
+            if (removeVideoBtn) {
+                removeVideoBtn.style.display = 'block';
+                // Enable the button for premium users
+                if (this.isPremiumUser()) {
+                    removeVideoBtn.disabled = false;
+                    removeVideoBtn.classList.remove('blurred');
+                }
+            }
+            
+            // Show video upload area for premium users
+            if (this.isPremiumUser()) {
+                const videoUploadArea = document.getElementById('video-upload-area');
+                const videoPremiumGate = document.getElementById('video-premium-gate');
+                const videoInput = document.getElementById('background-video-input');
+                
+                if (videoUploadArea) videoUploadArea.style.display = 'block';
+                if (videoPremiumGate) videoPremiumGate.style.display = 'none';
+                if (videoInput) videoInput.disabled = false;
+            }
+        }
+        
+        if (backgroundColor) {
+            const backgroundColorInput = document.getElementById('background-color');
+            if (backgroundColorInput) {
+                backgroundColorInput.value = backgroundColor;
+            }
+        }
+        
+        if (selectedPattern) {
+            const patternOptions = document.querySelectorAll('.pattern-option');
+            patternOptions.forEach(option => {
+                if (option.dataset.pattern === selectedPattern) {
+                    option.classList.add('selected');
+                }
+            });
+        }
+    }
+
+    showBackgroundOptions(type) {
+        const patternOptions = document.getElementById('pattern-options');
+        const imageUploadSection = document.getElementById('image-upload-section');
+        const videoUploadSection = document.getElementById('video-upload-section');
+        const backgroundColor = document.getElementById('background-color');
+
+        // Hide all options first
+        if (patternOptions) patternOptions.style.display = 'none';
+        if (imageUploadSection) imageUploadSection.style.display = 'none';
+        if (videoUploadSection) videoUploadSection.style.display = 'none';
+        if (backgroundColor) backgroundColor.style.display = 'none';
+
+        // Show relevant options without changing background
+        switch (type) {
+            case 'pattern':
+                if (patternOptions) patternOptions.style.display = 'block';
+                break;
+            case 'image':
+                if (imageUploadSection) imageUploadSection.style.display = 'block';
+                break;
+            case 'video':
+                if (videoUploadSection) videoUploadSection.style.display = 'block';
+                break;
+            case 'solid':
+                if (backgroundColor) backgroundColor.style.display = 'inline-block';
+                break;
         }
     }
 
@@ -655,17 +1087,26 @@ class SettingsManager {
     isPremiumUser() {
         const isPremium = localStorage.getItem('premium-user') === 'true';
         const trialStart = localStorage.getItem('trial-start');
+        const subscriptionType = localStorage.getItem('subscription-type');
         
-        if (isPremium && trialStart) {
-            const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-            const now = Date.now();
-            const trialExpired = (now - parseInt(trialStart)) > trialDuration;
-            
-            if (trialExpired) {
-                // Trial expired, remove premium status
-                localStorage.removeItem('premium-user');
-                localStorage.removeItem('trial-start');
-                return false;
+        if (isPremium) {
+            if (subscriptionType) {
+                // Has active subscription
+                return true;
+            } else if (trialStart) {
+                // Check trial expiration
+                const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+                const now = Date.now();
+                const trialExpired = (now - parseInt(trialStart)) > trialDuration;
+                
+                if (trialExpired) {
+                    // Trial expired, remove premium status
+                    localStorage.removeItem('premium-user');
+                    localStorage.removeItem('trial-start');
+                    this.tracker.showNotification('⏰ Your free trial has expired. Upgrade to continue using premium features!', 'warning');
+                    return false;
+                }
+                return true;
             }
         }
         
@@ -673,6 +1114,9 @@ class SettingsManager {
     }
 
     showUpgradeModal(feature) {
+        // Auto-close existing overlays first
+        this.closeAllOverlays();
+        
         const modal = document.createElement('div');
         modal.className = 'upgrade-modal';
         modal.innerHTML = `
@@ -755,12 +1199,20 @@ class SettingsManager {
     }
 
     startTrial() {
-        // Simulate starting trial
+        // Check if trial was already used
+        const trialUsed = localStorage.getItem('trial-used');
+        if (trialUsed === 'true') {
+            this.showPaymentModal();
+            return;
+        }
+        
+        // Start trial
         localStorage.setItem('premium-user', 'true');
         localStorage.setItem('trial-start', Date.now().toString());
+        localStorage.setItem('trial-used', 'true');
         
         // Close modal
-        const modal = document.querySelector('.upgrade-modal');
+        const modal = document.querySelector('.upgrade-modal, .purchase-modal');
         if (modal) modal.remove();
         
         // Show success message
@@ -771,6 +1223,128 @@ class SettingsManager {
         
         // Enable premium features immediately
         this.enablePremiumFeatures();
+        
+        // Set reminder for trial expiration
+        this.setTrialReminder();
+    }
+
+    showPaymentModal() {
+        const modal = document.createElement('div');
+        modal.className = 'payment-modal';
+        modal.innerHTML = `
+            <div class="payment-content glass-card">
+                <div class="payment-header">
+                    <h2>💳 Choose Your Plan</h2>
+                    <button class="close-btn" onclick="this.closest('.payment-modal').remove()">×</button>
+                </div>
+                
+                <div class="payment-body">
+                    <div class="trial-notice">
+                        <p>Your free trial has been used. Choose a plan to continue using premium features:</p>
+                    </div>
+                    
+                    <div class="payment-options">
+                        <div class="plan-card">
+                            <h4>Monthly Plan</h4>
+                            <div class="price">$4.99<span class="period">/month</span></div>
+                            <ul class="features">
+                                <li>✅ Advanced Analytics</li>
+                                <li>✅ Cloud Sync</li>
+                                <li>✅ Premium Themes</li>
+                                <li>✅ Custom Colors & Images</li>
+                                <li>✅ Priority Support</li>
+                            </ul>
+                            <button class="btn btn-premium" onclick="settingsManager.processPayment('monthly')">
+                                Subscribe Monthly
+                            </button>
+                        </div>
+                        
+                        <div class="plan-card recommended">
+                            <div class="recommended-badge">Best Value</div>
+                            <h4>Yearly Plan</h4>
+                            <div class="price">$39.99<span class="period">/year</span></div>
+                            <div class="savings">Save 33%!</div>
+                            <ul class="features">
+                                <li>✅ All Monthly Features</li>
+                                <li>✅ 4 Months Free</li>
+                                <li>✅ Exclusive Yearly Themes</li>
+                                <li>✅ Advanced Export Options</li>
+                            </ul>
+                            <button class="btn btn-premium" onclick="settingsManager.processPayment('yearly')">
+                                Subscribe Yearly
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-security">
+                        <p>🔒 Secure payment processing • Cancel anytime • 30-day money-back guarantee</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        
+        setTimeout(() => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }, 100);
+    }
+
+    processPayment(planType) {
+        // In a real app, this would integrate with payment processor
+        // For now, simulate successful payment
+        const modal = document.createElement('div');
+        modal.className = 'payment-processing-modal';
+        modal.innerHTML = `
+            <div class="processing-content glass-card">
+                <div class="processing-spinner">
+                    <div class="spinner"></div>
+                </div>
+                <h3>Processing Payment...</h3>
+                <p>Please wait while we process your payment securely.</p>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Simulate payment processing
+        setTimeout(() => {
+            modal.remove();
+            
+            // For demo purposes, show success
+            localStorage.setItem('premium-user', 'true');
+            localStorage.setItem('subscription-type', planType);
+            localStorage.setItem('subscription-start', Date.now().toString());
+            localStorage.removeItem('trial-start'); // Remove trial data
+            
+            this.tracker.showNotification(`🎉 Payment successful! Welcome to StudyFlow Premium (${planType})!`, 'success');
+            
+            // Close payment modal
+            const paymentModal = document.querySelector('.payment-modal');
+            if (paymentModal) paymentModal.remove();
+            
+            // Refresh settings
+            this.renderSettingsPage();
+            this.enablePremiumFeatures();
+        }, 3000);
+    }
+
+    setTrialReminder() {
+        // Set reminders for trial expiration
+        const trialStart = parseInt(localStorage.getItem('trial-start'));
+        const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
+        const reminderTime = trialStart + (5 * 24 * 60 * 60 * 1000); // 5 days after start
+        
+        const now = Date.now();
+        if (now < reminderTime) {
+            setTimeout(() => {
+                this.tracker.showNotification('⏰ Your free trial expires in 2 days. Upgrade to keep your premium features!', 'warning');
+            }, reminderTime - now);
+        }
     }
 
     enablePremiumFeatures() {
@@ -784,6 +1358,21 @@ class SettingsManager {
         // Hide premium overlays
         document.querySelectorAll('.premium-overlay').forEach(overlay => {
             overlay.style.display = 'none';
+        });
+        
+        // Mark body as premium for CSS targeting
+        document.body.setAttribute('data-premium', 'true');
+        
+        // Update any premium status indicators
+        this.updatePremiumStatusIndicators();
+    }
+
+    updatePremiumStatusIndicators() {
+        // Update any UI elements that show premium status
+        const premiumBadges = document.querySelectorAll('.premium-badge');
+        premiumBadges.forEach(badge => {
+            badge.textContent = 'Premium';
+            badge.style.display = 'block';
         });
     }
 
@@ -867,26 +1456,21 @@ class SettingsManager {
     }
 
     handleBackgroundTypeChange(type) {
-        const patternOptions = document.getElementById('pattern-options');
-        const imageUploadSection = document.getElementById('image-upload-section');
-        const backgroundColor = document.getElementById('background-color');
+        // Show/hide UI options
+        this.showBackgroundOptions(type);
 
-        // Hide all options first
-        if (patternOptions) patternOptions.style.display = 'none';
-        if (imageUploadSection) imageUploadSection.style.display = 'none';
-        if (backgroundColor) backgroundColor.style.display = 'none';
-
+        // Apply the background change
         switch (type) {
             case 'pattern':
-                if (patternOptions) patternOptions.style.display = 'block';
                 this.backgroundManager.applyBackground('pattern');
                 break;
             case 'image':
-                if (imageUploadSection) imageUploadSection.style.display = 'block';
                 this.backgroundManager.applyBackground('image');
                 break;
+            case 'video':
+                this.backgroundManager.applyBackground('video');
+                break;
             case 'solid':
-                if (backgroundColor) backgroundColor.style.display = 'inline-block';
                 this.backgroundManager.applyBackground('solid');
                 break;
             case 'gradient':
@@ -895,7 +1479,81 @@ class SettingsManager {
         }
 
         localStorage.setItem('background-type', type);
-        this.tracker.applyBackground(type);
+        this.tracker.logPerformanceEvent('Background Changed', type);
+    }
+
+    closeAllOverlays() {
+        // Close settings-specific overlays and modals
+        const settingsOverlays = document.querySelectorAll(`
+            .upgrade-modal,
+            .premium-modal,
+            .canvas-help-modal,
+            .color-picker-modal,
+            .import-export-modal,
+            .backup-modal
+        `);
+        
+        settingsOverlays.forEach(overlay => {
+            if (overlay && overlay.parentNode) {
+                overlay.remove();
+            }
+        });
+        
+        // Close any open dropdowns or tooltips
+        const dropdowns = document.querySelectorAll('.dropdown.open, .tooltip.visible');
+        dropdowns.forEach(dropdown => {
+            dropdown.classList.remove('open', 'visible');
+        });
+        
+        console.log(`🔒 Settings overlays closed: ${settingsOverlays.length} modals`);
+    }
+
+    enablePerformanceMode() {
+        const performanceToggle = document.getElementById('performance-toggle');
+        if (performanceToggle) performanceToggle.classList.add('active');
+        
+        localStorage.setItem('performance-mode', 'true');
+        document.body.classList.add('performance-mode');
+        
+        // Force disable glassmorphism when performance mode is enabled
+        const glassmorphismToggle = document.getElementById('glassmorphism-toggle');
+        if (glassmorphismToggle) glassmorphismToggle.classList.remove('active');
+        localStorage.setItem('glassmorphism-enabled', 'false');
+        document.body.classList.add('no-glassmorphism');
+        
+        // Apply visual settings
+        if (this.tracker && this.tracker.applyGlobalVisualSettings) {
+            this.tracker.applyGlobalVisualSettings();
+        }
+        
+        // Update settings visuals immediately
+        this.updateSettingsVisuals();
+        
+        this.tracker.showNotification('Performance mode enabled - Glassmorphism disabled');
+    }
+
+    disablePerformanceMode() {
+        const performanceToggle = document.getElementById('performance-toggle');
+        if (performanceToggle) performanceToggle.classList.remove('active');
+        
+        localStorage.setItem('performance-mode', 'false');
+        document.body.classList.remove('performance-mode');
+        
+        // Force enable glassmorphism when performance mode is disabled
+        const glassmorphismToggle = document.getElementById('glassmorphism-toggle');
+        if (glassmorphismToggle) glassmorphismToggle.classList.add('active');
+        localStorage.setItem('glassmorphism-enabled', 'true');
+        document.body.classList.remove('no-glassmorphism');
+        
+        // Apply visual settings
+        if (this.tracker && this.tracker.applyGlobalVisualSettings) {
+            this.tracker.applyGlobalVisualSettings();
+        }
+        
+        // Update settings visuals immediately
+        this.updateSettingsVisuals();
+        
+        this.tracker.showNotification('Performance mode disabled - Glassmorphism enabled');
     }
 
     async toggleCanvasIntegration() {
